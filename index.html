@@ -169,6 +169,14 @@ input[type=date]{width:100%;background:var(--card2);border:1px solid var(--borde
 #sync-badge.offline{background:#F9731622;color:var(--accent);display:inline-block}
 #sync-badge.local{background:#70707022;color:var(--muted);display:inline-block}
 .logout-btn{background:none;border:1px solid var(--border);color:var(--muted);border-radius:8px;padding:6px 11px;font-size:11px;font-family:inherit;font-weight:600;cursor:pointer}
+/* Install banner */
+#install-banner{display:none;background:linear-gradient(135deg,#F9731622,#F9731611);border:1px solid var(--accent);border-radius:12px;padding:14px;margin:14px 0;align-items:center;gap:12px}
+#install-banner.show{display:flex}
+.install-icon{font-size:26px;flex-shrink:0}
+.install-text{flex:1}
+.install-title{font-weight:800;font-size:14px;color:var(--accent)}
+.install-sub{font-size:11px;color:var(--muted);margin-top:2px;line-height:1.4}
+.install-action{background:var(--accent);border:none;color:#fff;border-radius:9px;padding:10px 16px;font-size:13px;font-weight:800;font-family:inherit;cursor:pointer;flex-shrink:0}
 </style>
 </head>
 <body>
@@ -203,6 +211,15 @@ input[type=date]{width:100%;background:var(--card2);border:1px solid var(--borde
     <span id="sync-badge"></span>
   </div>
   <div id="active-badge">ATIVO</div>
+</div>
+
+<div id="install-banner" style="margin:14px 16px 0">
+  <div class="install-icon">&#128241;</div>
+  <div class="install-text">
+    <div class="install-title">Instalar na tela inicial</div>
+    <div class="install-sub" id="install-sub">Acesso em 1 toque, sem abrir o navegador</div>
+  </div>
+  <button class="install-action" id="install-action" onclick="doInstall()">Instalar</button>
 </div>
 
 <div id="content"></div>
@@ -1292,6 +1309,73 @@ function exportCSV() {
   URL.revokeObjectURL(url);
 }
 
+// ── Instalacao do PWA ──────────────────────────────────────
+var deferredPrompt = null;
+
+function estaInstalado() {
+  return window.matchMedia('(display-mode: standalone)').matches
+      || window.navigator.standalone === true;
+}
+
+window.addEventListener('beforeinstallprompt', function(e) {
+  e.preventDefault();
+  deferredPrompt = e;
+  mostrarBannerInstalar();
+});
+
+function mostrarBannerInstalar() {
+  if (estaInstalado()) return;
+  var b = document.getElementById('install-banner');
+  if (b) b.classList.add('show');
+}
+
+async function doInstall() {
+  var sub = document.getElementById('install-sub');
+  var acao = document.getElementById('install-action');
+
+  if (deferredPrompt) {
+    deferredPrompt.prompt();
+    var escolha = await deferredPrompt.userChoice;
+    deferredPrompt = null;
+    if (escolha.outcome === 'accepted') {
+      document.getElementById('install-banner').classList.remove('show');
+    } else {
+      sub.textContent = 'Instalacao cancelada. Toque para tentar de novo.';
+    }
+    return;
+  }
+
+  // Sem prompt automatico — instrucoes manuais
+  var ua = navigator.userAgent;
+  var msg;
+  if (/CriOS|Safari/.test(ua) && /iPhone|iPad/.test(ua)) {
+    msg = 'No iPhone: toque no icone de Compartilhar (quadrado com seta) e escolha "Adicionar a Tela de Inicio".';
+  } else if (/SamsungBrowser/.test(ua)) {
+    msg = 'Navegador Samsung: menu (3 linhas) > "Adicionar pagina a" > "Tela inicial". Ou abra este link no Chrome.';
+  } else if (/Firefox/.test(ua)) {
+    msg = 'Firefox: menu (3 pontos) > "Instalar". Para melhor resultado, abra este link no Chrome.';
+  } else if (/Chrome/.test(ua)) {
+    msg = 'Chrome: menu (3 pontos, canto superior direito) > "Instalar app" ou "Adicionar a tela inicial". Se nao aparecer, recarregue a pagina e aguarde 15s.';
+  } else {
+    msg = 'Abra este endereco no Google Chrome para instalar: ' + window.location.href;
+  }
+  sub.textContent = msg;
+  acao.textContent = 'OK';
+  acao.onclick = function() { document.getElementById('install-banner').classList.remove('show'); };
+}
+
+window.addEventListener('appinstalled', function() {
+  deferredPrompt = null;
+  var b = document.getElementById('install-banner');
+  if (b) b.classList.remove('show');
+});
+
+// Se o navegador nao disparar beforeinstallprompt em 3s, mostra o banner
+// mesmo assim para oferecer as instrucoes manuais
+setTimeout(function() {
+  if (!deferredPrompt && !estaInstalado()) mostrarBannerInstalar();
+}, 3000);
+
 // ── Inicializacao ──────────────────────────────────────────
 function iniciarApp() {
   if (!window.FB || !window.FB.ativo) {
@@ -1313,6 +1397,7 @@ function iniciarApp() {
       setSyncBadge(navigator.onLine ? 'online' : 'offline');
       loadLocal();
       render();
+      if (!estaInstalado() && (deferredPrompt || true)) mostrarBannerInstalar();
       if (unsubSessoes) unsubSessoes();
       unsubSessoes = window.FB.escutarSessoes(user.uid, function(arr) {
         sessions = arr;
@@ -1323,6 +1408,8 @@ function iniciarApp() {
       currentUser = null;
       if (unsubSessoes) { unsubSessoes(); unsubSessoes = null; }
       overlay.style.display = 'flex';
+      var bn = document.getElementById('install-banner');
+      if (bn) bn.classList.remove('show');
       if (btn) { btn.disabled = false; btn.textContent = (authMode === 'login') ? 'Entrar' : 'Criar conta'; }
     }
   });
