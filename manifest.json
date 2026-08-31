@@ -1,0 +1,26 @@
+{
+  "name": "Treino Tracker — Bluefit Brasília",
+  "short_name": "Treino",
+  "description": "Registro de treinos de musculação e atividades aquáticas — Fase 1 Adaptação Anatômica",
+  "start_url": "./index.html",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#0C0C0C",
+  "theme_color": "#0C0C0C",
+  "lang": "pt-BR",
+  "icons": [
+    {
+      "src": "icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ]
+}
