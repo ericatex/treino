@@ -1,4 +1,4 @@
-const CACHE = 'treino-tracker-v3';
+const CACHE = 'treino-tracker-v5';
 const ASSETS = [
   './',
   './index.html',

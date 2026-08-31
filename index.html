@@ -228,6 +228,9 @@ input[type=date]{width:100%;background:var(--card2);border:1px solid var(--borde
   <button class="nav-btn active" id="nav-treino" onclick="switchTab('treino')">
     <span>&#9672;</span><span>TREINO</span>
   </button>
+  <button class="nav-btn" id="nav-progresso" onclick="switchTab('progresso')">
+    <span>&#9650;</span><span>PROGRESSO</span>
+  </button>
   <button class="nav-btn" id="nav-historico" onclick="switchTab('historico')">
     <span>&#9673;</span><span>HISTORICO</span>
   </button>
@@ -322,7 +325,7 @@ const TREINOS = {
     {nome:'Afundo Alternado',equip:'Peso corporal',tipo:'reps/perna'},{nome:'Abdutora',equip:'Maquina',tipo:'reps'},
     {nome:'Adutora',equip:'Maquina',tipo:'reps'},{nome:'Stiff com Halteres',equip:'Halteres',tipo:'reps'},
     {nome:'Pulldown com Triangulo',equip:'Cabo',tipo:'reps'},{nome:'Elevacao Lateral',equip:'Halteres',tipo:'reps'},
-    {nome:'Face Pull no Cabo',equip:'Cabo / Corda',tipo:'reps'},{nome:'Dead Bug',equip:'Solo',tipo:'reps/lado'}
+    {nome:'Face Pull no Cabo',equip:'Cabo / Corda',tipo:'reps'},{nome:'Gluteo no Cabo (Coice)',equip:'Cabo / Caneleira',tipo:'reps/perna'},{nome:'Dead Bug',equip:'Solo',tipo:'reps/lado'}
   ]}
 };
 
@@ -402,6 +405,7 @@ var EX_INFO = {
   'Pulldown com Triangulo': { descanso: 90, dicas: ['Segure o triangulo (pegada neutra), sente-se com coxas fixas sob a almofada.','Puxe o triangulo em direcao ao peito, apertando as escapulas.','Retorne controlando ate os bracos estendidos.'], atencao: 'Nao incline excessivamente o tronco. Foque nos dorsais.' },
   'Elevacao Lateral': { descanso: 60, dicas: ['Em pe, halteres ao lado do corpo, cotovelos levemente flexionados.','Levante os bracos lateralmente ate a altura dos ombros (formando um T).','Desca devagar (3 segundos). Use pesos leves — forma perfeita e prioridade.'], atencao: 'Nao suba acima dos ombros. Nao use impulso com o tronco.' },
   'Face Pull no Cabo': { descanso: 60, dicas: ['Cabo posicionado na altura do rosto, com corda como acessorio.','Puxe a corda em direcao ao rosto, abrindo os cotovelos para fora e apertando as escapulas.','Retorne controlando. Excelente para postura e saude dos ombros.'], atencao: 'Nao use carga pesada. Foco na contracao do deltoide posterior e trapezio medio.' },
+  'Gluteo no Cabo (Coice)': { descanso: 60, dicas: ['Prenda a caneleira no cabo baixo, fique de frente para a maquina e apoie as maos na estrutura.','Estenda a perna para tras contraindo o gluteo, mantendo o tronco estavel e levemente inclinado.','Retorne controlando, sem deixar as anilhas baterem. Complete as repeticoes e troque de perna.'], atencao: 'Nao hiperextenda a lombar — o movimento termina na extensao do quadril, nao nas costas.' },
   'Dead Bug': { descanso: 60, dicas: ['Deite de costas, bracos estendidos para o teto, joelhos a 90°.','Estenda simultaneamente o braco direito para tras e a perna esquerda a frente.','Mantenha a lombar pressionada no solo o tempo todo. Volte e alterne.'], atencao: 'Se a lombar descolar do chao, reduza a amplitude. Movimento lento e controlado.' }
 };
 
@@ -575,8 +579,10 @@ function importBackup() {
 
 function switchTab(tab) {
   currentTab = tab;
-  document.getElementById('nav-treino').className = 'nav-btn' + (tab==='treino'?' active':'');
-  document.getElementById('nav-historico').className = 'nav-btn' + (tab==='historico'?' active':'');
+  ['treino','progresso','historico'].forEach(function(t) {
+    var el = document.getElementById('nav-' + t);
+    if (el) el.className = 'nav-btn' + (tab === t ? ' active' : '');
+  });
   render();
 }
 
@@ -597,11 +603,11 @@ function imcCategoria(imc) {
 
 function startSession() {
   if (!cfgTreino) return;
-  var isAqua = (cfgTreino === 'NAT' || cfgTreino === 'HIDRO' || cfgTreino === 'OUTRO');
-  if (!isAqua && !cfgSemana) return;
+  var isLeve = (cfgTreino === 'LEVE');
+  if (!isLeve && !cfgSemana) return;
   var imc = calcIMC(cfgPeso);
-  if (isAqua) {
-    activeSession = { id: Date.now(), date: cfgDate, treino: cfgTreino, tipo: 'aquatico', startedAt: Date.now(), peso: cfgPeso, imc: imc, duracao: '', distancia: '', obs: '', completedAt: null };
+  if (isLeve) {
+    activeSession = { id: Date.now(), date: cfgDate, treino: 'LEVE', tipo: 'leve', startedAt: Date.now(), peso: cfgPeso, imc: imc, modalidade: '', cardioMin: '', intensidade: '', corePrancha: false, coreDeadbug: false, mobilidade: false, obs: '', completedAt: null };
   } else {
     var exs = TREINOS[cfgTreino].ex.map(function(ex) {
       return { nome: ex.nome, equip: ex.equip, tipo: ex.tipo, series: [newSerie()] };
@@ -701,15 +707,16 @@ function render() {
   var badge = document.getElementById('active-badge');
   if (activeSession) {
     badge.style.display = 'block';
-    var labels = { NAT: 'NATACAO', HIDRO: 'HIDRO', OUTRO: 'ATIVIDADE' };
-    badge.textContent = labels[activeSession.treino] || ('TREINO ' + activeSession.treino);
+    badge.textContent = (activeSession.tipo === 'leve') ? 'DIA LEVE' : ('TREINO ' + activeSession.treino);
   } else {
     badge.style.display = 'none';
   }
   var c = document.getElementById('content');
   if (currentTab === 'treino') {
-    if (activeSession) c.innerHTML = activeSession.tipo === 'aquatico' ? renderAquatico() : renderActive();
+    if (activeSession) c.innerHTML = activeSession.tipo === 'leve' ? renderLeve() : renderActive();
     else c.innerHTML = renderSetup();
+  } else if (currentTab === 'progresso') {
+    c.innerHTML = renderProgresso();
   } else {
     c.innerHTML = renderHistorico();
   }
@@ -717,7 +724,7 @@ function render() {
 }
 
 function renderSetup() {
-  var isAqua = (cfgTreino === 'NAT' || cfgTreino === 'HIDRO' || cfgTreino === 'OUTRO');
+  var isLeve = (cfgTreino === 'LEVE');
   var html = '<div style="padding:20px 0 20px">';
   html += '<div class="section-title" style="margin-bottom:16px">Novo registro</div>';
 
@@ -753,7 +760,7 @@ function renderSetup() {
 
   // Treino musculacao
   html += '<div class="card"><div class="card-inner">';
-  html += '<div class="label">MUSCULACAO</div>';
+  html += '<div class="label">MUSCULACAO — SEG &middot; QUA &middot; SEX</div>';
   ['A','B','C'].forEach(function(t) {
     var td = TREINOS[t];
     var sel = cfgTreino === t ? ' sel' : '';
@@ -766,26 +773,20 @@ function renderSetup() {
   });
   html += '</div></div>';
 
-  // Aquatico
-  var aquaOpts = [
-    { v:'NAT', icon:'◎', name:'Natacao', dia:'Terca / Quinta' },
-    { v:'HIDRO', icon:'◉', name:'Hidroginastica', dia:'Terca / Quinta' },
-    { v:'OUTRO', icon:'◈', name:'Outra atividade', dia:'Terca · Quinta · Sabado' }
-  ];
+  // Dia Leve
+  var selLeve = isLeve ? ' sel' : '';
   html += '<div class="card"><div class="card-inner">';
-  html += '<div class="label">AQUATICO / OUTROS</div>';
-  aquaOpts.forEach(function(a) {
-    var sel = cfgTreino === a.v ? ' sel' : '';
-    html += '<button class="treino-btn' + sel + '" onclick="selectTreino(\'' + a.v + '\')">';
-    html += '<div class="treino-letter" style="font-size:18px">' + a.icon + '</div>';
-    html += '<div><div class="treino-name">' + a.name + '</div>';
-    html += '<div class="treino-foco">' + a.dia + '</div></div>';
-    html += '</button>';
-  });
+  html += '<div class="label">DIA LEVE — TER &middot; QUI &middot; SAB</div>';
+  html += '<button class="treino-btn' + selLeve + '" onclick="selectTreino(\'LEVE\')">';
+  html += '<div class="treino-letter">L</div>';
+  html += '<div><div class="treino-name">Cardio leve + Core + Mobilidade</div>';
+  html += '<div class="treino-foco">Esteira ou bike 30-40 min em ritmo confortavel</div>';
+  html += '<div class="treino-count">~40-50 min total</div></div>';
+  html += '</button>';
   html += '</div></div>';
 
   // Semana (only for musculacao)
-  if (!isAqua) {
+  if (!isLeve) {
     html += '<div class="card"><div class="card-inner">';
     html += '<div class="label">SEMANA DO CICLO</div>';
     html += '<div class="semana-grid">';
@@ -802,10 +803,10 @@ function renderSetup() {
     html += '</div></div></div>';
   }
 
-  var ready = cfgTreino && (isAqua || cfgSemana);
+  var ready = cfgTreino && (isLeve || cfgSemana);
   html += '<button class="start-btn' + (ready?' ready':'') + '" onclick="startSession()">';
   if (!ready) html += 'Selecione o tipo de atividade';
-  else if (isAqua) html += 'Iniciar registro aquatico';
+  else if (isLeve) html += 'Iniciar Dia Leve';
   else html += 'Iniciar Treino ' + cfgTreino;
   html += '</button>';
   html += '</div>';
@@ -818,14 +819,12 @@ function fmtDuration(startedAt, completedAt) {
   return mins + ' min';
 }
 
-function renderAquatico() {
+function renderLeve() {
   var sess = activeSession;
-  var labels = { NAT: 'Natacao', HIDRO: 'Hidroginastica', OUTRO: 'Outra atividade' };
-  var icons = { NAT: '◎', HIDRO: '◉', OUTRO: '◈' };
   var html = '<div style="padding:16px 0 20px">';
   html += '<div class="session-header">';
-  html += '<div><div class="session-title">' + (icons[sess.treino]||'') + ' ' + (labels[sess.treino]||sess.treino) + '</div>';
-  html += '<div class="session-sub">' + fmtDate(sess.date) + '</div>';
+  html += '<div><div class="session-title">Dia Leve</div>';
+  html += '<div class="session-sub">' + fmtDate(sess.date) + ' &middot; Cardio + Core + Mobilidade</div>';
   if (sess.peso) {
     var sc2 = imcCategoria(sess.imc);
     html += '<div style="margin-top:4px;display:flex;align-items:center;gap:6px">';
@@ -837,52 +836,89 @@ function renderAquatico() {
   html += '</div>';
   html += '</div>';
 
+  // Cardio
   html += '<div class="card"><div class="card-inner" style="display:flex;flex-direction:column;gap:16px">';
 
-  // Duracao
-  html += '<div><div class="label">DURACAO (min)</div>';
-  html += '<div class="stepper">';
-  html += '<button class="step-btn" onclick="aquaStep(\'duracao\',-5)">-</button>';
-  html += '<input class="step-input" type="number" id="aqua-duracao" value="' + (sess.duracao||'') + '" onchange="aquaSet(\'duracao\',this.value)" placeholder="0" style="width:70px">';
-  html += '<button class="step-btn" onclick="aquaStep(\'duracao\',5)">+</button>';
+  // Modalidade
+  html += '<div><div class="label">MODALIDADE</div>';
+  html += '<div style="display:flex;gap:8px;flex-wrap:wrap">';
+  ['Esteira','Bicicleta','Eliptico','Outro'].forEach(function(m) {
+    var sel = sess.modalidade === m;
+    html += '<button onclick="leveSet(\'modalidade\',\'' + m + '\')" style="padding:9px 14px;border-radius:9px;border:2px solid ' + (sel?'var(--accent)':'var(--border)') + ';background:' + (sel?'#F9731622':'var(--card2)') + ';color:' + (sel?'var(--accent)':'#F0EDE8') + ';font-family:inherit;font-size:13px;font-weight:700;cursor:pointer">' + m + '</button>';
+  });
   html += '</div></div>';
 
-  // Distancia (only for natacao)
-  if (sess.treino === 'NAT') {
-    html += '<div><div class="label">DISTANCIA (m) — opcional</div>';
-    html += '<div class="stepper">';
-    html += '<button class="step-btn" onclick="aquaStep(\'distancia\',-50)">-</button>';
-    html += '<input class="step-input" type="number" id="aqua-distancia" value="' + (sess.distancia||'') + '" onchange="aquaSet(\'distancia\',this.value)" placeholder="0" style="width:70px">';
-    html += '<button class="step-btn" onclick="aquaStep(\'distancia\',50)">+</button>';
-    html += '</div></div>';
-  }
+  // Duracao
+  html += '<div><div class="label">DURACAO DO CARDIO (min) &middot; alvo: 30-40</div>';
+  html += '<div class="stepper">';
+  html += '<button class="step-btn" onclick="leveStep(\'cardioMin\',-5)">-</button>';
+  html += '<input class="step-input" type="number" id="leve-min" value="' + (sess.cardioMin||'') + '" onchange="leveSet(\'cardioMin\',this.value)" placeholder="0" style="width:70px">';
+  html += '<button class="step-btn" onclick="leveStep(\'cardioMin\',5)">+</button>';
+  html += '</div></div>';
+
+  // Intensidade
+  html += '<div><div class="label">INTENSIDADE &middot; alvo: leve a moderada</div>';
+  html += '<div style="display:flex;gap:8px">';
+  ['Leve','Moderada','Forte'].forEach(function(iN) {
+    var sel = sess.intensidade === iN;
+    var cor = iN==='Forte' ? '#EF4444' : (iN==='Moderada' ? '#F97316' : '#22C55E');
+    html += '<button onclick="leveSet(\'intensidade\',\'' + iN + '\')" style="flex:1;padding:10px;border-radius:9px;border:2px solid ' + (sel?cor:'var(--border)') + ';background:' + (sel?cor+'22':'var(--card2)') + ';color:' + (sel?cor:'var(--muted)') + ';font-family:inherit;font-size:13px;font-weight:700;cursor:pointer">' + iN + '</button>';
+  });
+  html += '</div></div>';
+
+  html += '</div></div>';
+
+  // Core + mobilidade
+  var CHECKS = [
+    { k:'corePrancha', t:'Prancha &mdash; 2-3 &times; 20-40s' },
+    { k:'coreDeadbug', t:'Dead Bug &mdash; 2-3 &times; 10/lado' },
+    { k:'mobilidade', t:'Mobilidade dinamica &mdash; 5-10 min (rotina do aquecimento)' }
+  ];
+  html += '<div class="card"><div class="card-inner">';
+  html += '<div class="label">CORE + MOBILIDADE</div>';
+  CHECKS.forEach(function(c) {
+    var chk = sess[c.k];
+    html += '<div class="wm-item">';
+    html += '<div class="wm-check' + (chk?' checked':'') + '" onclick="leveToggle(\'' + c.k + '\')">' + (chk?'&#10003;':'') + '</div>';
+    html += '<div class="wm-item-text' + (chk?' checked':'') + '">' + c.t + '</div>';
+    html += '</div>';
+  });
+  html += '</div></div>';
 
   // Observacoes
-  html += '<div><div class="label">OBSERVACOES</div>';
-  html += '<textarea id="aqua-obs" onchange="aquaSet(\'obs\',this.value)" placeholder="Como foi a sessao? Intensidade, sensacoes, modalidade..." style="width:100%;min-height:90px;background:#111;border:1px solid var(--border);color:#F0EDE8;border-radius:9px;padding:10px;font-size:13px;font-family:inherit;resize:vertical;line-height:1.5">' + (sess.obs||'') + '</textarea>';
-  html += '</div>';
-
+  html += '<div class="card"><div class="card-inner">';
+  html += '<div class="label">OBSERVACOES</div>';
+  html += '<textarea id="leve-obs" onchange="leveSet(\'obs\',this.value)" placeholder="Disposicao, sensacoes, como foi..." style="width:100%;min-height:80px;background:#111;border:1px solid var(--border);color:#F0EDE8;border-radius:9px;padding:10px;font-size:13px;font-family:inherit;resize:vertical;line-height:1.5">' + (sess.obs||'') + '</textarea>';
   html += '</div></div>';
 
   if (!confirming) {
-    html += '<button class="finish-btn" onclick="showConfirm()" style="background:#3B82F6">Finalizar Sessao</button>';
+    html += '<button class="finish-btn" onclick="showConfirm()">Finalizar Dia Leve</button>';
   } else {
-    html += '<div class="confirm-box" style="border-color:#3B82F6">';
+    html += '<div class="confirm-box">';
     html += '<div class="confirm-text">Salvar sessao no historico?</div>';
     html += '<div class="confirm-row">';
     html += '<button class="cancel-btn" onclick="cancelConfirm()">Cancelar</button>';
-    html += '<button class="save-btn" style="background:#3B82F6" onclick="finishSession()">Sim, salvar!</button>';
+    html += '<button class="save-btn" onclick="finishSession()">Sim, salvar!</button>';
     html += '</div></div>';
   }
   html += '</div>';
   return html;
 }
 
-function aquaSet(field, val) { if (activeSession) activeSession[field] = val; }
-function aquaStep(field, delta) {
+function leveSet(field, val) {
+  if (!activeSession) return;
+  activeSession[field] = val;
+  if (field === 'modalidade' || field === 'intensidade') render();
+}
+function leveStep(field, delta) {
   if (!activeSession) return;
   var cur = parseFloat(activeSession[field]) || 0;
   activeSession[field] = String(Math.max(0, cur + delta));
+  render();
+}
+function leveToggle(k) {
+  if (!activeSession) return;
+  activeSession[k] = !activeSession[k];
   render();
 }
 
@@ -1147,21 +1183,28 @@ function renderHistorico() {
   sessions.forEach(function(sess) {
     var isExp = expandedHist === sess.id;
     var isAqua = sess.tipo === 'aquatico';
+    var isLeve = sess.tipo === 'leve';
     var labels = { NAT:'Natacao', HIDRO:'Hidro', OUTRO:'Outro' };
     var dur = fmtDuration(sess.startedAt, sess.completedAt);
     var tSeries = 0, cExs = 0;
-    if (!isAqua && sess.exercises) {
+    if (!isAqua && !isLeve && sess.exercises) {
       tSeries = sess.exercises.reduce(function(a,ex) { return a + ex.series.length; },0);
       cExs = sess.exercises.filter(function(ex) { return ex.series.some(function(s) { return s.reps||s.carga; }); }).length;
     }
+    var coreN = isLeve ? ((sess.corePrancha?1:0)+(sess.coreDeadbug?1:0)+(sess.mobilidade?1:0)) : 0;
     html += '<div class="hist-card">';
     html += '<button class="hist-header-row" onclick="toggleHist(' + sess.id + ')">';
-    html += '<div class="hist-letter" style="' + (isAqua ? 'background:#3B82F622;border-color:#3B82F644;color:#60A5FA;font-size:16px' : '') + '">';
-    html += isAqua ? (sess.treino === 'NAT' ? '◎' : sess.treino === 'HIDRO' ? '◉' : '◈') : sess.treino;
+    var letterStyle = '';
+    if (isAqua) letterStyle = 'background:#3B82F622;border-color:#3B82F644;color:#60A5FA;font-size:16px';
+    else if (isLeve) letterStyle = 'background:#22C55E22;border-color:#22C55E44;color:#22C55E';
+    html += '<div class="hist-letter" style="' + letterStyle + '">';
+    html += isAqua ? (sess.treino === 'NAT' ? '◎' : sess.treino === 'HIDRO' ? '◉' : '◈') : (isLeve ? 'L' : sess.treino);
     html += '</div>';
-    html += '<div style="flex:1"><div class="hist-title">' + fmtDate(sess.date) + ' &middot; ' + (isAqua ? (labels[sess.treino]||sess.treino) : 'Treino ' + sess.treino) + '</div>';
+    html += '<div style="flex:1"><div class="hist-title">' + fmtDate(sess.date) + ' &middot; ' + (isAqua ? (labels[sess.treino]||sess.treino) : (isLeve ? 'Dia Leve' : 'Treino ' + sess.treino)) + '</div>';
     if (isAqua) {
       html += '<div class="hist-sub">' + (sess.duracao ? sess.duracao + ' min' : 'sem duracao') + (dur ? ' &middot; durou ' + dur : '') + (sess.peso ? ' &middot; ' + sess.peso + 'kg' : '') + '</div>';
+    } else if (isLeve) {
+      html += '<div class="hist-sub">' + (sess.modalidade||'Cardio') + (sess.cardioMin ? ' &middot; ' + sess.cardioMin + ' min' : '') + ' &middot; core/mob ' + coreN + '/3' + (sess.peso ? ' &middot; ' + sess.peso + 'kg' : '') + '</div>';
     } else {
       html += '<div class="hist-sub">Sem. ' + (sess.semana||'') + ' &middot; ' + cExs + '/' + (sess.exercises ? sess.exercises.length : 0) + ' exerc. &middot; ' + tSeries + ' series' + (dur ? ' &middot; ' + dur : '') + (sess.peso ? ' &middot; ' + sess.peso + 'kg' : '') + '</div>';
     }
@@ -1170,7 +1213,15 @@ function renderHistorico() {
     html += '</button>';
     if (isExp) {
       html += '<div class="hist-body">';
-      if (isAqua) {
+      if (isLeve) {
+        if (sess.intensidade) html += '<div style="font-size:13px;color:var(--muted);margin-bottom:6px">Intensidade: ' + sess.intensidade + '</div>';
+        var feitosH = [];
+        if (sess.corePrancha) feitosH.push('Prancha');
+        if (sess.coreDeadbug) feitosH.push('Dead Bug');
+        if (sess.mobilidade) feitosH.push('Mobilidade');
+        html += '<div style="font-size:13px;color:var(--muted);margin-bottom:6px">Feito: ' + (feitosH.length ? feitosH.join(', ') : 'nada marcado') + '</div>';
+        if (sess.obs) html += '<div style="font-size:13px;color:#F0EDE8;line-height:1.5;white-space:pre-wrap">' + sess.obs + '</div>';
+      } else if (isAqua) {
         if (sess.distancia) html += '<div style="font-size:13px;color:var(--muted);margin-bottom:6px">Distancia: ' + sess.distancia + ' m</div>';
         if (sess.obs) html += '<div style="font-size:13px;color:#F0EDE8;line-height:1.5;white-space:pre-wrap">' + sess.obs + '</div>';
         else html += '<div style="font-size:13px;color:var(--faint)">Sem observacoes.</div>';
@@ -1205,6 +1256,194 @@ function renderHistorico() {
   return html;
 }
 
+// ── Progresso ──────────────────────────────────────────────
+var progExercicio = null;
+
+function weekStart(dateStr) {
+  var d = new Date(dateStr + 'T12:00:00');
+  var day = d.getDay();
+  var diff = (day === 0) ? 6 : day - 1;
+  d.setDate(d.getDate() - diff);
+  var y = d.getFullYear();
+  var m = ('0' + (d.getMonth() + 1)).slice(-2);
+  var dd = ('0' + d.getDate()).slice(-2);
+  return y + '-' + m + '-' + dd;
+}
+
+function fmtDDMM(iso) {
+  var p = iso.split('-');
+  return p[2] + '/' + p[1];
+}
+
+function progCard(titulo, inner) {
+  return '<div class="card"><div class="card-inner"><div class="label">' + titulo + '</div>' + inner + '</div></div>';
+}
+
+function progVazio(msg) {
+  return '<div style="font-size:12px;color:var(--muted);padding:16px 0;text-align:center">' + msg + '</div>';
+}
+
+function svgBarAderencia(weeks) {
+  var W = 340, H = 175, padL = 24, padB = 24, padT = 20, padR = 8;
+  var cw = W - padL - padR, ch = H - padT - padB;
+  var maxY = 6;
+  var n = weeks.length;
+  var gap = cw / n;
+  var bw = Math.min(36, gap * 0.62);
+  var s = '<svg viewBox="0 0 ' + W + ' ' + H + '" style="width:100%;height:auto;display:block" xmlns="http://www.w3.org/2000/svg">';
+  [0, 2, 4, 6].forEach(function(v) {
+    var y = padT + ch - (v / maxY) * ch;
+    s += '<line x1="' + padL + '" y1="' + y + '" x2="' + (W - padR) + '" y2="' + y + '" stroke="#2A2A2A" stroke-width="1"/>';
+    s += '<text x="' + (padL - 5) + '" y="' + (y + 3) + '" fill="#707070" font-size="9" text-anchor="end">' + v + '</text>';
+  });
+  var yGoal = padT + ch - (5 / maxY) * ch;
+  s += '<line x1="' + padL + '" y1="' + yGoal + '" x2="' + (W - padR) + '" y2="' + yGoal + '" stroke="#22C55E" stroke-width="1.2" stroke-dasharray="5,4" opacity="0.65"/>';
+  s += '<text x="' + (W - padR) + '" y="' + (yGoal - 4) + '" fill="#22C55E" font-size="8.5" text-anchor="end" opacity="0.85">meta 5+</text>';
+  weeks.forEach(function(w, i) {
+    var x = padL + gap * i + gap / 2 - bw / 2;
+    var h = (w.count / maxY) * ch;
+    var y = padT + ch - h;
+    var cor = w.count >= 5 ? '#22C55E' : (w.count >= 3 ? '#F97316' : '#707070');
+    s += '<rect x="' + x + '" y="' + y + '" width="' + bw + '" height="' + Math.max(h, 2) + '" rx="4" fill="' + cor + '"/>';
+    if (w.count > 0) s += '<text x="' + (x + bw / 2) + '" y="' + (y - 5) + '" fill="' + cor + '" font-size="10.5" font-weight="700" text-anchor="middle">' + w.count + '</text>';
+    s += '<text x="' + (x + bw / 2) + '" y="' + (H - 7) + '" fill="#707070" font-size="8.5" text-anchor="middle">' + fmtDDMM(w.ws) + '</text>';
+  });
+  s += '</svg>';
+  return s;
+}
+
+function svgLinha(points, cor) {
+  var W = 340, H = 175, padL = 36, padB = 24, padT = 20, padR = 12;
+  var cw = W - padL - padR, ch = H - padT - padB;
+  var vals = points.map(function(p) { return p.val; });
+  var mn = Math.min.apply(null, vals);
+  var mx = Math.max.apply(null, vals);
+  if (mn === mx) { mn -= 1; mx += 1; }
+  var range = mx - mn;
+  mn -= range * 0.18;
+  mx += range * 0.18;
+  function X(i) { return points.length === 1 ? padL + cw / 2 : padL + (i / (points.length - 1)) * cw; }
+  function Y(v) { return padT + ch - ((v - mn) / (mx - mn)) * ch; }
+  var s = '<svg viewBox="0 0 ' + W + ' ' + H + '" style="width:100%;height:auto;display:block" xmlns="http://www.w3.org/2000/svg">';
+  for (var g = 0; g <= 3; g++) {
+    var gv = mn + (mx - mn) * g / 3;
+    var gy = Y(gv);
+    s += '<line x1="' + padL + '" y1="' + gy + '" x2="' + (W - padR) + '" y2="' + gy + '" stroke="#2A2A2A" stroke-width="1"/>';
+    s += '<text x="' + (padL - 5) + '" y="' + (gy + 3) + '" fill="#707070" font-size="8.5" text-anchor="end">' + gv.toFixed(1) + '</text>';
+  }
+  if (points.length > 1) {
+    var pts = points.map(function(p, i) { return X(i) + ',' + Y(p.val); }).join(' ');
+    s += '<polyline points="' + pts + '" fill="none" stroke="' + cor + '" stroke-width="2" stroke-linejoin="round"/>';
+  }
+  points.forEach(function(p, i) {
+    s += '<circle cx="' + X(i) + '" cy="' + Y(p.val) + '" r="3.5" fill="' + cor + '"/>';
+    s += '<text x="' + X(i) + '" y="' + (Y(p.val) - 8) + '" fill="' + cor + '" font-size="9" font-weight="700" text-anchor="middle">' + p.val + '</text>';
+    var showX = points.length <= 7 || i % 2 === 0 || i === points.length - 1;
+    if (showX) s += '<text x="' + X(i) + '" y="' + (H - 7) + '" fill="#707070" font-size="8.5" text-anchor="middle">' + p.label + '</text>';
+  });
+  s += '</svg>';
+  return s;
+}
+
+function setProgEx(v) { progExercicio = v; render(); }
+
+function renderProgresso() {
+  var html = '<div style="padding:16px 0">';
+  html += '<div class="section-title" style="margin-bottom:4px">Progresso</div>';
+
+  if (!sessions.length) {
+    html += '<div class="hist-empty">';
+    html += '<div class="hist-empty-icon">&#9650;</div>';
+    html += '<div style="font-weight:700;font-size:16px;color:#F0EDE8">Sem dados ainda</div>';
+    html += '<div style="font-size:13px;color:var(--muted);margin-top:6px">Registre seus primeiros treinos e os graficos aparecem aqui.</div>';
+    html += '</div></div>';
+    return html;
+  }
+
+  var asc = sessions.slice().sort(function(a, b) {
+    return (a.date === b.date) ? (a.id - b.id) : (a.date < b.date ? -1 : 1);
+  });
+
+  html += '<div class="section-sub" style="margin-bottom:14px">' + sessions.length + ' sessao(oes) registradas</div>';
+
+  // 1) Aderencia
+  var byWeek = {};
+  asc.forEach(function(s) {
+    var ws = weekStart(s.date);
+    if (!byWeek[ws]) byWeek[ws] = {};
+    byWeek[ws][s.date] = true;
+  });
+  var weeks = Object.keys(byWeek).sort().map(function(ws) {
+    return { ws: ws, count: Object.keys(byWeek[ws]).length };
+  }).slice(-8);
+  html += progCard('ADERENCIA — DIAS TREINADOS POR SEMANA (META: 5+ DE 6)', svgBarAderencia(weeks));
+
+  // 2) Peso medio semanal
+  var wByWeek = {};
+  asc.forEach(function(s) {
+    var p = parseFloat(s.peso);
+    if (!p) return;
+    var ws = weekStart(s.date);
+    if (!wByWeek[ws]) wByWeek[ws] = [];
+    wByWeek[ws].push(p);
+  });
+  var wkeys = Object.keys(wByWeek).sort();
+  if (wkeys.length) {
+    var wpoints = wkeys.map(function(ws) {
+      var arr = wByWeek[ws];
+      var avg = arr.reduce(function(a, b) { return a + b; }, 0) / arr.length;
+      return { label: fmtDDMM(ws), val: parseFloat(avg.toFixed(1)) };
+    }).slice(-10);
+    html += progCard('PESO — MEDIA SEMANAL (kg)', svgLinha(wpoints, '#F97316') +
+      '<div style="font-size:10px;color:var(--muted);margin-top:6px;line-height:1.4">Media das pesagens da semana. Leia a tendencia, nao o dia isolado.</div>');
+  } else {
+    html += progCard('PESO — MEDIA SEMANAL (kg)', progVazio('Registre o peso no inicio das sessoes para ver a curva.'));
+  }
+
+  // 3) Carga por exercicio
+  var exSet = {};
+  asc.forEach(function(s) {
+    if (s.tipo !== 'musculacao' || !s.exercises) return;
+    s.exercises.forEach(function(ex) {
+      if (ex.series && ex.series.some(function(sr) { return parseFloat(sr.carga) > 0; })) exSet[ex.nome] = true;
+    });
+  });
+  var exList = Object.keys(exSet);
+  if (exList.length) {
+    if (!progExercicio || exList.indexOf(progExercicio) === -1) progExercicio = exList[0];
+    var selHtml = '<select onchange="setProgEx(this.value)" style="width:100%;background:var(--card2);border:1px solid var(--border);color:#F0EDE8;border-radius:9px;padding:9px 12px;font-size:13px;font-family:inherit;margin-bottom:10px">';
+    exList.forEach(function(n) {
+      selHtml += '<option value="' + n + '"' + (n === progExercicio ? ' selected' : '') + '>' + n + '</option>';
+    });
+    selHtml += '</select>';
+    var lpoints = [];
+    asc.forEach(function(s) {
+      if (s.tipo !== 'musculacao' || !s.exercises) return;
+      var ex = null;
+      for (var i = 0; i < s.exercises.length; i++) {
+        if (s.exercises[i].nome === progExercicio) { ex = s.exercises[i]; break; }
+      }
+      if (!ex) return;
+      var mx = 0;
+      ex.series.forEach(function(sr) {
+        var c = parseFloat(sr.carga);
+        if (c > mx) mx = c;
+      });
+      if (mx > 0) lpoints.push({ label: fmtDDMM(s.date), val: mx });
+    });
+    lpoints = lpoints.slice(-12);
+    var inner = selHtml + (lpoints.length
+      ? svgLinha(lpoints, '#60A5FA') + '<div style="font-size:10px;color:var(--muted);margin-top:6px;line-height:1.4">Maior carga registrada por sessao. E aqui que a tonificacao aparece primeiro.</div>'
+      : progVazio('Sem cargas registradas para este exercicio.'));
+    html += progCard('CARGA — EVOLUCAO POR EXERCICIO (kg)', inner);
+  } else {
+    html += progCard('CARGA — EVOLUCAO POR EXERCICIO (kg)', progVazio('Registre as cargas nos treinos de forca para ver a evolucao.'));
+  }
+
+  html += '</div>';
+  return html;
+}
+
 function attachEvents() {
   var dateEl = document.getElementById('cfg-date');
   if (dateEl) dateEl.addEventListener('change', function() { cfgDate = this.value; });
@@ -1217,8 +1456,7 @@ function attachEvents() {
 function selectSemana(v) { cfgSemana = v; render(); }
 function selectTreino(t) {
   cfgTreino = t;
-  var isAqua = (t === 'NAT' || t === 'HIDRO' || t === 'OUTRO');
-  if (isAqua) cfgSemana = null;
+  if (t === 'LEVE') cfgSemana = null;
   render();
 }
 function setPeso(v) { cfgPeso = v; render(); }
@@ -1282,7 +1520,18 @@ function exportCSV() {
     var dur = fmtDuration(sess.startedAt, sess.completedAt);
     var peso = sess.peso || '';
     var imc = sess.imc || '';
-    if (sess.tipo === 'aquatico') {
+    if (sess.tipo === 'leve') {
+      var feitosC = [];
+      if (sess.corePrancha) feitosC.push('Prancha');
+      if (sess.coreDeadbug) feitosC.push('Dead Bug');
+      if (sess.mobilidade) feitosC.push('Mobilidade');
+      var obsL = 'Intensidade: ' + (sess.intensidade||'-') + '; Feito: ' + (feitosC.length ? feitosC.join(' / ') : '-') + (sess.obs ? '; ' + sess.obs.replace(/"/g,'') : '');
+      rows.push([
+        sess.date, 'Dia leve', '"' + (sess.modalidade||'') + '"', '',
+        (sess.cardioMin ? sess.cardioMin + ' min' : ''), peso, imc, '', '', '', '', '', '',
+        '"' + obsL + '"'
+      ].join(','));
+    } else if (sess.tipo === 'aquatico') {
       var labels = { NAT:'Natacao', HIDRO:'Hidroginastica', OUTRO:'Outra atividade' };
       rows.push([
         sess.date, 'Aquatico', '"' + (labels[sess.treino]||sess.treino) + '"', '',
