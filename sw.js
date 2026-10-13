@@ -1,4 +1,4 @@
-const CACHE = 'treino-tracker-v8';
+const CACHE = 'treino-tracker-v9';
 const ASSETS = [
   './',
   './index.html',
@@ -7,10 +7,15 @@ const ASSETS = [
   './icon-512.png'
 ];
 
+// Instala baixando SEMPRE da rede (cache:'reload'), nunca do cache HTTP do navegador
 self.addEventListener('install', function(e) {
   e.waitUntil(
     caches.open(CACHE).then(function(cache) {
-      return cache.addAll(ASSETS);
+      return Promise.all(ASSETS.map(function(u) {
+        return fetch(new Request(u, { cache: 'reload' })).then(function(res) {
+          if (res && res.status === 200) return cache.put(u, res);
+        });
+      }));
     }).then(function() { return self.skipWaiting(); })
   );
 });
@@ -41,17 +46,28 @@ self.addEventListener('fetch', function(e) {
   // Apenas mesma origem
   if (url.origin !== self.location.origin) return;
 
+  // Rede primeiro (versao nova sempre que houver internet); cache como reserva offline
   e.respondWith(
-    caches.match(e.request).then(function(cached) {
-      if (cached) return cached;
-      return fetch(e.request).then(function(res) {
+    new Promise(function(resolve) {
+      var done = false;
+      var timer = setTimeout(function() {
+        if (done) return;
+        caches.match(e.request).then(function(c) { if (c && !done) { done = true; resolve(c); } });
+      }, 3000);
+      fetch(e.request, { cache: 'no-cache' }).then(function(res) {
+        clearTimeout(timer);
         if (res && res.status === 200 && res.type === 'basic') {
           const copy = res.clone();
           caches.open(CACHE).then(function(cache) { cache.put(e.request, copy); });
         }
-        return res;
+        if (!done) { done = true; resolve(res); }
       }).catch(function() {
-        return caches.match('./index.html');
+        clearTimeout(timer);
+        caches.match(e.request).then(function(c) {
+          if (done) return;
+          done = true;
+          resolve(c || caches.match('./index.html'));
+        });
       });
     })
   );
