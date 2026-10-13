@@ -311,7 +311,7 @@ if (!CONFIGURADO) {
 const TREINOS = {
   A: { dia:'Segunda-feira', foco:'Quadriceps · Peitorais · Dorsais · Core', ex:[
     {nome:'Leg Press 45',equip:'Maquina',tipo:'reps'},{nome:'Cadeira Extensora',equip:'Maquina',tipo:'reps'},
-    {nome:'Mesa Flexora',equip:'Maquina',tipo:'reps'},{nome:'Elevacao Pelvica',equip:'Solo / Halter',tipo:'reps'},
+    {nome:'Flexora em Pe',equip:'Maquina (ST710)',tipo:'reps'},{nome:'Elevacao Pelvica',equip:'Solo / Halter',tipo:'reps'},
     {nome:'Supino Maquina',equip:'Maquina',tipo:'reps'},{nome:'Puxada Frontal',equip:'Cabo',tipo:'reps'},
     {nome:'Desenvolvimento Ombro',equip:'Maquina',tipo:'reps'},{nome:'Prancha Abdominal',equip:'Solo',tipo:'tempo'}
   ]},
@@ -386,7 +386,7 @@ var cfgPeso = '';
 var EX_INFO = {
   'Leg Press 45': { descanso: 90, dicas: ['Posicione os pes na plataforma na largura dos ombros, com os pes levemente apontados para fora.','Desca a plataforma flexionando os joelhos ate ~90°, mantendo a lombar apoiada no encosto.','Empurre com toda a planta do pe, sem travar os joelhos no topo.'], atencao: 'Nao tire a lombar do encosto. Nao trave os joelhos na extensao completa.' },
   'Cadeira Extensora': { descanso: 60, dicas: ['Ajuste o encosto para que os joelhos fiquem alinhados com o eixo da maquina.','Estenda as pernas completamente, contraindo o quadriceps no topo por 1 segundo.','Desca controlando (2-3 segundos na fase excentrica).'], atencao: 'Nao use impulso. Evite hiperextender os joelhos.' },
-  'Mesa Flexora': { descanso: 60, dicas: ['Deite de brucos com o rolo na altura dos tornoze los (logo acima do calcanhar).','Flexione os joelhos levando os calcanhares em direcao aos gluteos.','Desca devagar sem soltar o peso de vez.'], atencao: 'Nao levante o quadril do apoio. Mantenha o abdomen contraido.' },
+  'Flexora em Pe': { descanso: 60, dicas: ['Fique de frente para o aparelho, apoie as maos e posicione o rolo atras do tornozelo (logo acima do calcanhar) da perna que vai trabalhar. Perna de apoio levemente flexionada.','Flexione o joelho levando o calcanhar em direcao ao gluteo, sem tirar o joelho do lugar. Contraia o posterior da coxa no topo por 1 segundo.','Volte devagar (2-3 segundos), sem soltar o peso de vez. Faca todas as repeticoes de uma perna e depois troque.'], atencao: 'Nao balance o tronco nem arqueie a lombar para ganhar impulso. Nao trave o joelho da perna de apoio. Se o peso exigir jogar o quadril, reduza a carga.' },
   'Elevacao Pelvica': { descanso: 60, dicas: ['Deite de costas, joelhos flexionados, pes apoiados no chao na largura do quadril.','Eleve o quadril contraindo fortemente os gluteos ate formar uma linha reta joelhos-quadril-ombros.','Segure 2 segundos no topo. Semanas 3-4: adicione um halter sobre o quadril.'], atencao: 'Nao hiperextenda a lombar. O movimento vem dos gluteos, nao da lombar.' },
   'Supino Maquina': { descanso: 90, dicas: ['Sente-se com as costas apoiadas e as maos na altura do peito.','Empurre as manoplas a frente estendendo os bracos (sem travar cotovelos).','Retorne devagar ate sentir um leve alongamento no peito.'], atencao: 'Nao arquee excessivamente as costas. Mantenha as escapulas retraidas.' },
   'Puxada Frontal': { descanso: 90, dicas: ['Segure a barra com pegada pronada (palmas para frente), um pouco mais larga que os ombros.','Puxe a barra ate a altura do queixo/clavicula, levando os cotovelos para baixo e para tras.','Retorne controlando, sentindo o alongamento nos dorsais.'], atencao: 'Nao puxe atras do pescoco. Evite inclinar o tronco excessivamente.' },
