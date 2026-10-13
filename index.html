@@ -124,6 +124,7 @@ input[type=date]{width:100%;background:var(--card2);border:1px solid var(--borde
 .hist-title{font-weight:700;font-size:14px}
 .hist-sub{font-size:11px;color:var(--muted);margin-top:2px}
 .hist-body{border-top:1px solid var(--border);padding:12px 16px}
+.del-btn{width:100%;margin-top:14px;background:none;border:1px solid #EF4444;color:#EF4444;border-radius:9px;padding:10px;font-size:13px;font-weight:700;font-family:inherit;cursor:pointer}
 .hist-ex-name{font-weight:700;font-size:13px;color:var(--accent);margin-bottom:7px}
 .hist-serie{display:flex;gap:8px;flex-wrap:wrap;padding-left:10px;border-left:2px solid var(--faint);margin-bottom:4px}
 .hist-serie-num{color:var(--accent);font-weight:700;font-size:12px}
@@ -1248,6 +1249,7 @@ function renderHistorico() {
           html += '</div>';
         });
       }
+      html += '<button class="del-btn" onclick="apagarRegistro(' + sess.id + ')">&#128465; Apagar este registro</button>';
       html += '</div>';
     }
     html += '</div>';
@@ -1471,6 +1473,21 @@ function toggleWarmupItem(key) { warmupChecks[key] = !warmupChecks[key]; render(
 function showConfirm() { confirming = true; render(); }
 function cancelConfirm() { confirming = false; render(); }
 function toggleHist(id) { expandedHist = expandedHist === id ? null : id; render(); }
+
+async function apagarRegistro(id) {
+  var sess = sessions.filter(function(x) { return x.id === id; })[0];
+  if (!sess) return;
+  var nome = sess.tipo === 'leve' ? 'Dia Leve' : (sess.tipo === 'aquatico' ? 'Atividade aquatica' : 'Treino ' + sess.treino);
+  if (!confirm('Apagar o registro de ' + fmtDate(sess.date) + ' (' + nome + ')?\n\nEssa acao nao pode ser desfeita.')) return;
+  sessions = sessions.filter(function(x) { return x.id !== id; });
+  if (expandedHist === id) expandedHist = null;
+  saveLocal();
+  render();
+  if (!modoLocal && currentUser && window.FB && window.FB.ativo) {
+    try { await window.FB.apagarSessao(currentUser.uid, id); }
+    catch (e) { console.error('Erro ao apagar na nuvem:', e); alert('Nao foi possivel apagar na nuvem agora. Tente de novo com internet.'); }
+  }
+}
 
 function toggleSerie(exIdx, sIdx) {
   var key = exIdx + '_' + sIdx;
